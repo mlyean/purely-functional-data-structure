@@ -1,6 +1,6 @@
 module Chapter2.Section2 where
 
-open import Level using (Level)
+open import Level using (Level; _⊔_)
 open import Data.Bool using (Bool; true; false; if_then_else_)
 open import Data.Maybe as M using (Maybe; just; nothing)
 open import Data.Nat using (ℕ; zero; suc; _+_)
@@ -34,6 +34,9 @@ module UnbalancedSet
   where
 
   open StrictTotalOrder strictTotalOrder renaming (Carrier to α)
+
+  empty : Tree α
+  empty = leaf
 
   member : α → Tree α → Bool
   member x leaf = false
@@ -140,7 +143,7 @@ module Exercise5b where
   f′ x (suc n) (acc rec) with splitEven n | lemma₁ n | lemma₂ n
   ... | a , b | h₁ | h₂  = node (f′ x a (rec a (s≤s h₁))) x (f′ x b (rec b (s≤s h₂)))
 
-  -- f x n returns a balanced binary tree of size n consisting only x's
+  -- f x n returns a balanced binary tree of size n consisting of only x's
   f : {α : Set a} → α → (n : ℕ) → Tree α
   f x n = f′ x n (<-wellFounded n)
 
@@ -181,3 +184,33 @@ module Exercise5b where
   -- f x n is balanced
   theorem₂ : {α : Set a} (x : α) (n : ℕ) → Balanced (f x n)
   theorem₂ x n = lemma₆ x (<-wellFounded n)
+
+-- Map implementation
+module Exercise6 where
+  open import Data.Product as P using (_×_; _,_; proj₁; proj₂)
+
+  Map : {a b : Level} → Set a → Set b → Set (a ⊔ b)
+  Map α β = Tree (α × β)
+
+  module FiniteMap
+    {ℓ₁ ℓ₂ ℓ₃ : Level} (strictTotalOrder : StrictTotalOrder a ℓ₁ ℓ₂) (β : Set ℓ₃)
+    where
+
+    open StrictTotalOrder strictTotalOrder renaming (Carrier to α)
+
+    empty : Map α β
+    empty = leaf
+
+    bind : α → β → Map α β → Map α β
+    bind x v leaf = node leaf (x , v) leaf
+    bind x v (node a y b) =
+      if does (x <? proj₁ y) then node (bind x v a) y b
+      else if does (proj₁ y <? x) then node a y (bind x v b)
+      else node a (x , v) b
+
+    lookup : α → Map α β → Maybe β
+    lookup x leaf = nothing
+    lookup x (node a y b) =
+      if does (x <? proj₁ y) then lookup x a
+      else if does (proj₁ y <? x) then lookup x b
+      else just (proj₂ y)
